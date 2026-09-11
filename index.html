@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Magical Surprise Music Show</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000000; /* প্রথম অবস্থায় একদম ফুল ব্ল্যাক */
+            overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: block;
+            z-index: 1;
+        }
+
+        /* ঠিক মাঝখানে ম্যাজিকাল টেক্সট ও ইমোজি প্রদর্শনের স্টাইল */
+        .magic-center-popup {
+            position: absolute;
+            font-weight: bold;
+            pointer-events: none;
+            white-space: nowrap;
+            animation: centerPopAnimation 2.5s ease-out forwards;
+            z-index: 5;
+            text-align: center;
+        }
+
+        @keyframes centerPopAnimation {
+            0% {
+                transform: scale(0.2) translateY(30px) rotate(0deg);
+                opacity: 0;
+            }
+            30% {
+                transform: scale(1.4) translateY(0px) rotate(-3deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1.8) translateY(-60px) rotate(5deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ব্যাকগ্রাউন্ড অডিও (আপনার দেওয়া ফাইলের নাম) -->
+    <audio id="bgMusic" src="ssstik.io_1789117235722.mp3" loop></audio>
+
+    <canvas id="magicCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('magicCanvas');
+        const ctx = canvas.getContext('2d');
+        const bgMusic = document.getElementById('bgMusic');
+
+        let particles = [];
+        let hue = 0;
+        let isStarted = false;
+        let effectInterval = null;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // আলোর কণা বা স্পার্ক ক্লাস
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.size = Math.random() * 6 + 1;
+                this.speedX = (Math.random() - 0.5) * 10;
+                this.speedY = (Math.random() - 0.5) * 10;
+                this.color = color;
+                this.alpha = 1;
+                this.decay = Math.random() * 0.015 + 0.01;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.size *= 0.94;
+                this.alpha -= this.decay;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 20;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // ঠিক স্ক্রিনের মাঝখানে বা টাচ করা স্থানে ম্যাজিক টেক্সট ও ইমোজি দেখানোর ফাংশন
+        function showMagicEffect(x, y, customText = null) {
+            const el = document.createElement('div');
+            el.className = 'magic-center-popup';
+
+            // ফানি টেক্সট ও ইমোজির কালেকশন
+            const texts = [
+                "𝕾𝖚𝖗𝖕𝖗𝖎𝖘𝖊! 𝕸𝖆𝑴𝖊𝖗 𝕱𝖚𝖈𝖐𝖊𝖗 𝖑𝖆𝖆 🌚",
+                "🔥 LOL 🤣",
+                "✨ 𝕾𝖚𝖗𝖕𝖗𝖎𝖘𝖊 𝕸𝖆𝖉𝖊𝖗 𝕱𝖚𝖈𝖐𝖊𝖗 𝖑𝖆𝖆 🗿",
+                "🤣 𝖄𝖔𝖔𝖔! 🔥",
+                "💀 𝕷𝖆𝖆 𝖑𝖆𝖆 🌚",
+                "🎉 𝕾𝖚𝖗𝖕𝖗𝖎𝖘𝖊! 🚀"
+            ];
+
+            el.innerHTML = customText || texts[Math.floor(Math.random() * texts.length)];
+
+            const randomColor = `hsl(${Math.random() * 360}, 100%, 65%)`;
+            const randomSize = Math.floor(Math.random() * 6) + 20; // বড় ও আকর্ষণীয় সাইজ
+
+            // স্ক্রিনের ঠিক মাঝখানে (Center) পজিশন সেট করা
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+
+            el.style.left = (centerX - 150) + 'px';
+            el.style.top = (centerY - 30) + 'px';
+            el.style.fontSize = randomSize + 'px';
+            el.style.color = randomColor;
+            el.style.textShadow = `0 0 15px ${randomColor}, 0 0 30px${randomColor}, 0 0 45px #ffffff`;
+
+            document.body.appendChild(el);
+
+            setTimeout(() => {
+                el.remove();
+            }, 2500);
+        }
+
+        // স্ক্রিনে ক্লিক বা টাচ করলে যা ঘটবে
+        function handleFirstTouch(e) {
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            if (!isStarted) {
+                // প্রথম ক্লিকেই মিউজিক প্লে হবে
+                bgMusic.play().catch(err => console.log(err));
+                isStarted = true;
+
+                // গান চলার সাথে সাথে মাঝখানে স্বয়ংক্রিয়ভাবে বারবার ইফেক্ট আসার লুপ
+                effectInterval = setInterval(() => {
+                    if (!bgMusic.paused) {
+                        showMagicEffect();
+                        
+                        // ব্যাকগ্রাউন্ডে রঙিন স্পার্ক ছড়ানোর জন্য
+                        const centerX = window.innerWidth / 2;
+                        const centerY = window.innerHeight / 2;
+                        const rColor = `hsl(${Math.random() * 360}, 100%, 60%)`;
+                        for (let i = 0; i < 15; i++) {
+                            particles.push(new Particle(centerX, centerY, rColor));
+                        }
+                    }
+                }, 1500); // প্রতি ১.৫ সেকেন্ড পর পর মাঝখানে লেখা ও ইমোজি আসবে
+            }
+
+            // টাচ করলেই সাথে সাথে মাঝখানে মূল লেখা ভেসে উঠবে
+            showMagicEffect(clientX, clientY, "𝕾𝖚𝖗𝖕𝖗𝖎𝖘𝖊! 𝕸𝖆𝖉𝖊𝖗 𝕱𝖚𝖈𝖐𝖊𝖗 𝖑𝖆𝖆 🌚");
+
+            const mainColor = `hsl(${hue}, 100%, 60%)`;
+            for (let i = 0; i < 25; i++) {
+                particles.push(new Particle(clientX, clientY, mainColor));
+            }
+
+            hue = (hue + 50) % 360;
+        }
+
+        // ইভেন্ট লিসেনার
+        window.addEventListener('mousedown', handleFirstTouch);
+        window.addEventListener('touchstart', handleFirstTouch, { passive: false });
+
+        // অ্যানিমেশন লুপ
+        function animate() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update();
+                particles[i].draw();
+
+                if (particles[i].alpha <= 0) {
+                    particles.splice(i, 1);
+                    i--;
+                }
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
